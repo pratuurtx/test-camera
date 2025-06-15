@@ -35,7 +35,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
     const [imgSrc, setImgSrc] = useState<string | null>(null);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [deviceId, setDeviceId] = useState<string | undefined>();
-    const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+    const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
     const [isMobile, setIsMobile] = useState<boolean>(false);
     const [isTablet, setIsTablet] = useState<boolean>(false);
     const theme = useTheme();
@@ -145,7 +145,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                         />
 
                         {/* Device Selector (Top Right) */}
-                        {shouldShowDeviceSelector && (
+                        {true && (
                             <Select
                                 value={deviceId}
                                 onChange={(e) => setDeviceId(e.target.value)}
@@ -194,7 +194,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                 )}
 
                 {/* Switch Camera (Mobile only - Top Right) */}
-                {isMobile && !imgSrc && !shouldShowDeviceSelector && (
+                {/* {isMobile && !imgSrc  && (
                     <IconButton
                         onClick={switchCamera}
                         sx={{
@@ -208,7 +208,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                     >
                         <FlipCameraAndroidIcon />
                     </IconButton>
-                )}
+                )} */}
 
                 {/* Close Button (Top Left) */}
                 <IconButton
