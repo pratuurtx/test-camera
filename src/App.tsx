@@ -29,8 +29,8 @@ function App() {
         <Button variant="contained" onClick={() => setOpen(true)}>
           Open Camera
         </Button>
+      </Box>
 
-      </Box >
       <Modal
         open={open}
         onClose={() => setOpen(false)}
@@ -43,11 +43,16 @@ function App() {
           '& .MuiBackdrop-root': {
             backgroundColor: 'rgba(0, 0, 0, 0.9)'
           }
-        }}>
-        <CustomWebcam
-          handleTakePhoto={handleTakePhoto}
-          handleCloseCamera={handleCloseCamera}
-        />
+        }}
+      >
+        <>
+          {open && (
+            <CustomWebcam
+              handleTakePhoto={handleTakePhoto}
+              handleCloseCamera={handleCloseCamera}
+            />
+          )}
+        </>
       </Modal>
     </>
   );

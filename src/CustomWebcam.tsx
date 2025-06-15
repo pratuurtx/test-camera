@@ -42,6 +42,39 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
     const isLandscape = useMediaQuery('(orientation: landscape)');
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
+    // Detect mobile/tablet and enumerate devices on mount
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        setIsTablet(isTabletDevice());
+
+        navigator.mediaDevices.enumerateDevices().then((mediaDevices) => {
+            const videoDevices = mediaDevices.filter(({ kind }) => kind === "videoinput");
+            setDevices(videoDevices);
+            // Initialize deviceId with last selected or first available
+            if (videoDevices.length > 0 && !deviceId) {
+                setDeviceId(videoDevices[0].deviceId);
+            }
+        });
+    }, []);
+
+    // When facingMode changes, update deviceId accordingly (to keep sync)
+    useEffect(() => {
+        // Find device with matching facing mode label if possible (mobile hack)
+        if (devices.length === 0) return;
+
+        const preferredLabel = facingMode === "user" ? "front" : "back";
+
+        // Find device whose label includes "front" or "back" (somewhat heuristic)
+        const found = devices.find(d =>
+            d.label.toLowerCase().includes(preferredLabel)
+        );
+
+        if (found && found.deviceId !== deviceId) {
+            setDeviceId(found.deviceId);
+        }
+        // If no label found, keep current deviceId
+    }, [facingMode, devices]);
+
     const getDimensions = () => {
         if (isMobile || isTablet) {
             return {
@@ -65,23 +98,12 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
         return 4 / 3;
     };
 
-    useEffect(() => {
-        setIsMobile(isMobileDevice());
-        setIsTablet(isTabletDevice());
-        navigator.mediaDevices.enumerateDevices().then((mediaDevices) => {
-            const videoDevices = mediaDevices.filter(({ kind }) => kind === "videoinput");
-            setDevices(videoDevices);
-            if (videoDevices.length > 0 && !deviceId) {
-                setDeviceId(videoDevices[0].deviceId);
-            }
-        });
-    }, []);
+    // Video constraints depend on deviceId (exact) or facingMode fallback
+    const videoConstraints: MediaTrackConstraints = deviceId
+        ? { deviceId: { exact: deviceId } }
+        : { facingMode };
 
-    const videoConstraints: MediaTrackConstraints = {
-        facingMode,
-        deviceId: deviceId ? { exact: deviceId } : undefined,
-    };
-
+    // Capture photo
     const capture = useCallback(() => {
         if (webcamRef.current) {
             const imageSrc = webcamRef.current.getScreenshot();
@@ -89,15 +111,23 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
         }
     }, []);
 
+    // Switch camera: toggle facingMode to trigger effect
     const switchCamera = () => {
-        setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+        setFacingMode(prev => (prev === "user" ? "environment" : "user"));
+        setImgSrc(null); // reset photo preview on switch
     };
 
+    // Confirm photo taken
     const handleConfirm = async () => {
         if (imgSrc) await handleTakePhoto(imgSrc);
     };
 
-    const shouldShowDeviceSelector = isDesktop && devices.length > 0 && !imgSrc;
+    // On retake: clear captured photo
+    const handleRetake = () => {
+        setImgSrc(null);
+    };
+
+    const shouldShowDeviceSelector = isDesktop && devices.length > 1 && !imgSrc;
 
     return (
         <Box sx={{
@@ -144,11 +174,14 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                             }}
                         />
 
-                        {/* Device Selector (Top Right) */}
+                        {/* Device Selector (Desktop Only) */}
                         {shouldShowDeviceSelector && (
                             <Select
                                 value={deviceId}
-                                onChange={(e) => setDeviceId(e.target.value)}
+                                onChange={(e) => {
+                                    setDeviceId(e.target.value);
+                                    setImgSrc(null);
+                                }}
                                 size="small"
                                 sx={{
                                     position: 'absolute',
@@ -175,7 +208,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                             </Select>
                         )}
 
-                        {/* Capture Button (Bottom Center) */}
+                        {/* Capture Button */}
                         <IconButton
                             onClick={capture}
                             sx={{
@@ -239,9 +272,9 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                         variant="contained"
                         color="primary"
                         startIcon={<ReplayIcon />}
-                        onClick={() => setImgSrc(null)}
+                        onClick={handleRetake}
                         size="large">
-                        {"Retake"}
+                        Retake
                     </Button>
                     <Button
                         variant="contained"
@@ -249,7 +282,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: ICustomWebc
                         startIcon={<CheckIcon />}
                         onClick={handleConfirm}
                         size="large">
-                        {"Confirm"}
+                        Confirm
                     </Button>
                 </Box>
             )}
