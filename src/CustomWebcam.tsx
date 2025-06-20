@@ -50,7 +50,8 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
             if (!selectedDevice && videoDevices.length > 0) {
                 const backCamera = videoDevices.find(device =>
                     device.label.toLowerCase().includes("back") ||
-                    device.label.toLowerCase().includes("rear")
+                    device.label.toLowerCase().includes("rear") ||
+                    device.label.toLowerCase().includes("environtment")
                 );
 
                 if (!backCamera) {
