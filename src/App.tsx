@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Box, Button, Modal, IconButton, ThemeProvider, Typography } from "@mui/material";
+import { Box, Button, Modal, IconButton, ThemeProvider, Typography, Paper } from "@mui/material";
 import { CustomWebcam } from "./CustomWebcam";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
+import SendIcon from "@mui/icons-material/Send";
 import theme from "./theme";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { ExtractDataFromThaiIdCard } from "./services";
 
 function App() {
   const [openCamera, setOpenCamera] = useState(false);
@@ -14,6 +16,9 @@ function App() {
   const [firstImage, setFirstImage] = useState<string | null>(null);
   const [secondImage, setSecondImage] = useState<string | null>(null);
   const [captureMode, setCaptureMode] = useState<"first" | "second" | null>(null);
+  const [isSending, setIsSending] = useState<"first" | "second" | null>(null);
+  const [firstImageResult, setFirstImageResult] = useState<any>(null);
+  const [secondImageResult, setSecondImageResult] = useState<any>(null);
 
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isSmallDevice = useMediaQuery(theme.breakpoints.down(400));
@@ -21,8 +26,10 @@ function App() {
   const handleTakePhoto = async (dataUri: string) => {
     if (captureMode === "first") {
       setFirstImage(dataUri);
+      setFirstImageResult(null);
     } else if (captureMode === "second") {
       setSecondImage(dataUri);
+      setSecondImageResult(null);
     }
     setOpenCamera(false);
     setCaptureMode(null);
@@ -51,11 +58,37 @@ function App() {
   const clearFirstImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setFirstImage(null);
+    setFirstImageResult(null);
   };
 
   const clearSecondImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setSecondImage(null);
+    setSecondImageResult(null);
+  };
+
+  const handleSendImage = async (imageType: "first" | "second") => {
+    const imageData = imageType === "first" ? firstImage : secondImage;
+    if (!imageData) return;
+
+    setIsSending(imageType);
+    try {
+      const response = await ExtractDataFromThaiIdCard(imageData);
+      if (imageType === "first") {
+        setFirstImageResult(response);
+      } else {
+        setSecondImageResult(response);
+      }
+    } catch (error) {
+      const errorResult = { error: "Failed to process image", details: error instanceof Error ? error.message : String(error) };
+      if (imageType === "first") {
+        setFirstImageResult(errorResult);
+      } else {
+        setSecondImageResult(errorResult);
+      }
+    } finally {
+      setIsSending(null);
+    }
   };
 
   return (
@@ -68,9 +101,9 @@ function App() {
           alignItems: "center",
           gap: 4,
           width: "100%",
-          height: "100dvh",
+          minHeight: "100dvh",
           p: 2,
-          overflow: "hidden",
+          overflow: "auto",
         }}
       >
         <Box sx={{
@@ -79,150 +112,239 @@ function App() {
           flexDirection: isMobile ? "column" : "row",
           width: "100%",
           maxWidth: "800px",
-          minHeight: "140px"
         }}>
+          {/* First Image Section */}
           <Box sx={{
             flex: 1,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "background.paper",
-            boxShadow: 3,
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 2,
-            border: firstImage ? `2px solid ${theme.palette.primary.main}` : "2px dashed",
-            borderColor: firstImage ? "primary.main" : "divider",
-            minWidth: 0,
-            position: "relative",
-            overflow: "hidden"
+            gap: 2
           }}>
-            {firstImage ? (
-              <Box sx={{
-                display: "flex",
-                gap: 1,
-                alignItems: "center",
-                width: "100%",
-                justifyContent: "center",
-                flexWrap: isSmallDevice ? "wrap" : "nowrap"
-              }}>
+            <Box sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "background.paper",
+              boxShadow: 3,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+              border: firstImage ? `2px solid ${theme.palette.primary.main}` : "2px dashed",
+              borderColor: firstImage ? "primary.main" : "divider",
+              minWidth: 0,
+              position: "relative",
+              overflow: "hidden",
+              minHeight: "140px"
+            }}>
+              {firstImage ? (
+                <Box sx={{
+                  display: "flex",
+                  flexDirection: isSmallDevice ? "column" : "row",
+                  gap: 1,
+                  alignItems: "center",
+                  width: "100%",
+                  justifyContent: "center",
+                  flexWrap: isSmallDevice ? "wrap" : "nowrap"
+                }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleViewImage(firstImage)}
+                    sx={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flexShrink: 1
+                    }}>
+                    <Typography noWrap>
+                      {isSmallDevice ? "View" : "View First"}
+                    </Typography>
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<SendIcon />}
+                    onClick={() => handleSendImage("first")}
+                    disabled={isSending === "first"}
+                    sx={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flexShrink: 1
+                    }}>
+                    <Typography noWrap>
+                      {isSending === "first" ? "Sending..." : (isSmallDevice ? "Send" : "Send First")}
+                    </Typography>
+                  </Button>
+                  <IconButton
+                    onClick={clearFirstImage}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      flexShrink: 0
+                    }}>
+                    <CloseIcon fontSize={isSmallDevice ? "small" : "medium"} />
+                  </IconButton>
+                </Box>
+              ) : (
                 <Button
-                  variant="outlined"
-                  startIcon={<VisibilityIcon />}
-                  onClick={() => handleViewImage(firstImage)}
+                  fullWidth
+                  variant="contained"
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={handleOpenFirst}
                   sx={{
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    height: "100%",
+                    py: 2,
                     whiteSpace: "nowrap",
-                    flexShrink: 1
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
                   }}>
                   <Typography noWrap>
-                    {isSmallDevice ? "View" : "View First Image"}
+                    {isSmallDevice ? "First" : "Take First Image"}
                   </Typography>
                 </Button>
-                <IconButton
-                  onClick={clearFirstImage}
-                  sx={{
-                    bgcolor: "error.main",
-                    color: "white",
-                    flexShrink: 0
-                  }}>
-                  <CloseIcon fontSize={isSmallDevice ? "small" : "medium"} />
-                </IconButton>
-              </Box>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<PhotoCameraIcon />}
-                onClick={handleOpenFirst}
-                sx={{
-                  height: "100%",
-                  py: 2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}>
-                <Typography noWrap>
-                  {isSmallDevice ? "First" : "Take First Image"}
+              )}
+            </Box>
+
+            {firstImageResult && (
+              <Paper elevation={3} sx={{ p: 2, width: "100%" }}>
+                <Typography variant="h6" gutterBottom>
+                  First Image Result:
                 </Typography>
-              </Button>
+                <Box component="pre" sx={{ 
+                  overflow: "auto",
+                  maxHeight: "200px",
+                  bgcolor: "background.default",
+                  p: 1,
+                  borderRadius: 1,
+                  fontSize: "0.8rem",
+                  fontFamily: "monospace"
+                }}>
+                  {JSON.stringify(firstImageResult, null, 2)}
+                </Box>
+              </Paper>
             )}
           </Box>
 
+          {/* Second Image Section */}
           <Box sx={{
             flex: 1,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "background.paper",
-            boxShadow: 3,
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 2,
-            border: secondImage ? `2px solid ${theme.palette.secondary.main}` : "2px dashed",
-            borderColor: secondImage ? "secondary.main" : "divider",
-            minWidth: 0,
-            position: "relative",
-            overflow: "hidden"
+            gap: 2
           }}>
-            {secondImage ? (
-              <Box sx={{
-                display: "flex",
-                gap: 1,
-                alignItems: "center",
-                width: "100%",
-                justifyContent: "center",
-                flexWrap: isSmallDevice ? "wrap" : "nowrap"
-              }}>
+            <Box sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "background.paper",
+              boxShadow: 3,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+              border: secondImage ? `2px solid ${theme.palette.secondary.main}` : "2px dashed",
+              borderColor: secondImage ? "secondary.main" : "divider",
+              minWidth: 0,
+              position: "relative",
+              overflow: "hidden",
+              minHeight: "140px"
+            }}>
+              {secondImage ? (
+                <Box sx={{
+                  display: "flex",
+                  flexDirection: isSmallDevice ? "column" : "row",
+                  gap: 1,
+                  alignItems: "center",
+                  width: "100%",
+                  justifyContent: "center",
+                  flexWrap: isSmallDevice ? "wrap" : "nowrap"
+                }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleViewImage(secondImage)}
+                    sx={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flexShrink: 1
+                    }}>
+                    <Typography noWrap>
+                      {isSmallDevice ? "View" : "View Second"}
+                    </Typography>
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<SendIcon />}
+                    onClick={() => handleSendImage("second")}
+                    disabled={isSending === "second"}
+                    sx={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flexShrink: 1
+                    }}>
+                    <Typography noWrap>
+                      {isSending === "second" ? "Sending..." : (isSmallDevice ? "Send" : "Send Second")}
+                    </Typography>
+                  </Button>
+                  <IconButton
+                    onClick={clearSecondImage}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      flexShrink: 0
+                    }}
+                  >
+                    <CloseIcon fontSize={isSmallDevice ? "small" : "medium"} />
+                  </IconButton>
+                </Box>
+              ) : (
                 <Button
-                  variant="outlined"
-                  startIcon={<VisibilityIcon />}
-                  onClick={() => handleViewImage(secondImage)}
+                  fullWidth
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={handleOpenSecond}
                   sx={{
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    height: "100%",
+                    py: 2,
                     whiteSpace: "nowrap",
-                    flexShrink: 1
-                  }}>
-                  <Typography noWrap>
-                    {isSmallDevice ? "View" : "View Second Image"}
-                  </Typography>
-                </Button>
-                <IconButton
-                  onClick={clearSecondImage}
-                  sx={{
-                    bgcolor: "error.main",
-                    color: "white",
-                    flexShrink: 0
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
                   }}
                 >
-                  <CloseIcon fontSize={isSmallDevice ? "small" : "medium"} />
-                </IconButton>
-              </Box>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                color="secondary"
-                startIcon={<PhotoCameraIcon />}
-                onClick={handleOpenSecond}
-                sx={{
-                  height: "100%",
-                  py: 2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}
-              >
-                <Typography noWrap>
-                  {isSmallDevice ? "Second" : "Take Second Image"}
+                  <Typography noWrap>
+                    {isSmallDevice ? "Second" : "Take Second Image"}
+                  </Typography>
+                </Button>
+              )}
+            </Box>
+
+            {secondImageResult && (
+              <Paper elevation={3} sx={{ p: 2, width: "100%" }}>
+                <Typography variant="h6" gutterBottom>
+                  Second Image Result:
                 </Typography>
-              </Button>
+                <Box component="pre" sx={{ 
+                  overflow: "auto",
+                  maxHeight: "200px",
+                  bgcolor: "background.default",
+                  p: 1,
+                  borderRadius: 1,
+                  fontSize: "0.8rem",
+                  fontFamily: "monospace"
+                }}>
+                  {JSON.stringify(secondImageResult, null, 2)}
+                </Box>
+              </Paper>
             )}
           </Box>
         </Box>

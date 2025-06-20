@@ -1,0 +1,1 @@
+export * from "./thai-id/thai-id.model";

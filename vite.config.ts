@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [react()],
   base: "/test-camera/",
   server: {
-    allowedHosts: ["a282-161-246-145-168.ngrok-free.app"]
+    allowedHosts: ["f3b5-103-106-8-146.ngrok-free.app"]
   }
 })
