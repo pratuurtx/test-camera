@@ -32,9 +32,9 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera, confirmButton
             stream.getTracks().forEach(track => track.stop());
             setStream(null);
         }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
+        // if (videoRef.current) {
+        //     videoRef.current.srcObject = null;
+        // }
     };
 
     const startCamera = async () => {
