@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Button, IconButton, MenuItem, Select, FormControl, Modal } from "@mui/material";
+import {
+    Box,
+    Button,
+    IconButton,
+    MenuItem,
+    Select,
+    FormControl,
+    Modal
+} from "@mui/material";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import ReplayIcon from "@mui/icons-material/Replay";
 import CheckIcon from "@mui/icons-material/Check";
@@ -8,9 +16,11 @@ import CloseIcon from "@mui/icons-material/Close";
 interface Props {
     handleTakePhoto: (dataUri: string) => Promise<void>;
     handleCloseCamera: () => void;
+    confirmButtonName?: string;
+    retakeButtonName?: string;
 }
 
-export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
+export function CustomWebcam({ handleTakePhoto, handleCloseCamera, confirmButtonName = "Confirm", retakeButtonName = "Retake" }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [imgSrc, setImgSrc] = useState<string | null>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
@@ -22,10 +32,13 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
             stream.getTracks().forEach(track => track.stop());
             setStream(null);
         }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
     };
-    const startCamera = async () => {
-        stopStream()
 
+    const startCamera = async () => {
+        stopStream();
         try {
             let constraints: MediaStreamConstraints = {
                 video: { facingMode: "environment" }
@@ -51,13 +64,13 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
                 const backCamera = videoDevices.find((device, index) =>
                     device.label.toLowerCase().includes("back") ||
                     device.label.toLowerCase().includes("rear") ||
-                    device.label.toLowerCase().includes("environtment") ||
+                    device.label.toLowerCase().includes("environment") ||
                     index === videoDevices.length - 1
                 );
 
                 if (!backCamera) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    const tracks = stream.getVideoTracks();
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const tracks = fallbackStream.getVideoTracks();
                     const settings = tracks[0]?.getSettings();
                     tracks.forEach(track => track.stop());
 
@@ -75,16 +88,16 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
                 setSelectedDevice(backCamera?.deviceId || videoDevices[0].deviceId);
             }
         } catch (err) {
-            console.error("Error accessing camera:", err);
+            console.error("[Camera ERROR]:", err);
             try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                setStream(mediaStream);
+                const fallback = await navigator.mediaDevices.getUserMedia({ video: true });
+                setStream(fallback);
                 if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
+                    videoRef.current.srcObject = fallback;
                     await videoRef.current.play();
                 }
             } catch (fallbackErr) {
-                console.error("Fallback camera access failed:", fallbackErr);
+                console.error("[Fallback ERROR]:", fallbackErr);
             }
         }
     };
@@ -114,7 +127,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
         if (imgSrc) {
             await handleTakePhoto(imgSrc);
             setImgSrc(null);
-            startCamera();
+            stopStream();
         }
     };
 
@@ -125,6 +138,11 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
 
     const handleDeviceChange = (event: any) => {
         setSelectedDevice(event.target.value);
+    };
+
+    const handleClose = () => {
+        stopStream();
+        handleCloseCamera();
     };
 
     return (
@@ -190,14 +208,14 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
                                 color="warning"
                                 startIcon={<ReplayIcon />}
                                 onClick={retake}>
-                                Retake
+                                {retakeButtonName}
                             </Button>
                             <Button
                                 variant="contained"
                                 color="success"
                                 startIcon={<CheckIcon />}
                                 onClick={confirmPhoto}>
-                                Confirm
+                                {confirmButtonName}
                             </Button>
                         </Box>
                     </Box>
@@ -205,7 +223,7 @@ export function CustomWebcam({ handleTakePhoto, handleCloseCamera }: Props) {
             )}
 
             <IconButton
-                onClick={handleCloseCamera}
+                onClick={handleClose}
                 sx={{
                     position: "absolute",
                     top: 16,

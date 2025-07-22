@@ -9,7 +9,6 @@ export async function ExtractDataFromThaiIdCard(base64ImageStr: string) {
             },
             body: JSON.stringify({ base64ImageStr: base64ImageStr }),
         });
-        console.log("x-api-key", import.meta.env.VITE_X_API_KEY);
         return await response.json();
     } catch (error) {
         console.error("Error sending image to backend:", error);
